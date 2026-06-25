@@ -6,7 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-.env
+
 
 node_modules
 dist
@@ -30,3 +30,8 @@ dist-ssr
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+#arquivo de acesso
+.env
+.env.local
+.env.*.backup
