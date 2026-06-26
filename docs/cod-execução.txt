@@ -1,0 +1,18 @@
+- Executar local o projeto
+  yarn dev
+
+- Executar local o projeto para pegar os codigos/localizador
+  yarn playwright codegen http://localhost:5173
+
+- Executar o teste via navegador
+  yarn playwright test --headed
+
+- Executar via hedreas
+  yarn playwright test
+
+- Executar os teste via navegador com inspecionar aberto
+  yarn playwright test --ui
+
+- Rodar os teste via navegador com inspecionar roda passo a passo
+  yarn playwright test --debug
+

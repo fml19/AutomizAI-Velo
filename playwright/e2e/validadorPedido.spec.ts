@@ -10,11 +10,15 @@ test('deve consultar um pedido aprovado', async ({ page }) => {
 
   // Act
   await page.getByRole('link', { name: 'Consultar Pedido' }).click();
-  await expect(page.getByRole('heading', { name: 'Consultar Pedido' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Consultar Pedido' })).toBeVisible({ timeout: 10000 });
   await page.getByTestId('search-order-id').fill('VLO-Z69QA0');
-  await page.getByTestId('search-order-button').click();
+  //linha excluida a nivel de aula// await page.getByTestId('search-order-button').click();
+  await page.getByRole('button', { name: 'Buscar Pedido' }).click();
 
   //Assert
-  await expect(page.getByTestId('order-result-id')).toContainText('VLO-Z69QA0');
-  await expect(page.getByTestId('order-result-status')).toContainText('APROVADO');
+  //linha excluida a nivel de aula//await expect(page.getByTestId('order-result-id')).toContainText('VLO-Z69QA0');
+  await expect(page.getByText('VLO-Z69QA0', { exact: true })).toBeVisible();
+  //linha excluida a nivel de aula// await expect(page.getByTestId('order-result-status')).toContainText('APROVADO');
+  await expect(page.getByText('APROVADO', { exact: true })).toBeVisible();
+
 });
