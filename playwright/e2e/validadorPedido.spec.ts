@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { generateOrderCode } from '../support/helperrs'
-import { number } from 'zod/v4';
+import { OrdeLockupPage } from '../support/pages/OrderLockupPage0';
 
 /// AAA - Arrange(Preparar), Act(Agir), Assert(Verificar)
 
@@ -21,14 +21,12 @@ test.describe('Consulta de Pedido', () => {
     //Test Date
     const order = 'VLO-Z69QA0'
 
-    await page.getByTestId('search-order-id').fill(order);
-    //linha excluida a nivel de aula// await page.getByTestId('search-order-button').click();
-    await page.getByRole('button', { name: 'Buscar Pedido' }).click();
+    //Act
+    const orderLockupPage = new OrdeLockupPage(page)
+    await orderLockupPage.searchOrder(order)
 
     //Assert
-    //linha excluida a nivel de aula//await expect(page.getByTestId('order-result-id')).toContainText('VLO-Z69QA0');
     await expect(page.getByText(order, { exact: true })).toBeVisible();
-    //linha excluida a nivel de aula// await expect(page.getByTestId('order-result-status')).toContainText('APROVADO');
     await expect(page.getByText('APROVADO', { exact: true })).toBeVisible();
 
   })
@@ -39,15 +37,16 @@ test.describe('Consulta de Pedido', () => {
     const order = 'VLO-Z69QA0'
 
     //Act
-    await page.getByTestId('search-order-id').fill(order);
-    await page.getByRole('button', { name: 'Buscar Pedido' }).click();
+    const orderLockupPage = new OrdeLockupPage(page)
+    await orderLockupPage.searchOrder(order)
 
     //Assert
     await expect(page.getByTestId(`order-result-${order}`)).toMatchAriaSnapshot(`
     - paragraph: Pedido
     - paragraph: ${order}
-    - img
-    - text: APROVADO
+    - status:
+      - img
+      - text: APROVADO
     - img "Velô Sprint"
     - paragraph: Modelo
     - paragraph: Velô Sprint
@@ -70,6 +69,15 @@ test.describe('Consulta de Pedido', () => {
     - paragraph: À Vista
     - paragraph: /R\\$ \\d+\\.\\d+,\\d+/
     `);
+
+    const statusBadge = page.getByRole('status').filter({ hasText: 'APROVADO' })
+
+    await expect(statusBadge).toHaveClass(/bg-green-100/)
+    await expect(statusBadge).toHaveClass(/text-green-700/)
+
+    const statusIcon = statusBadge.locator('svg')
+    await expect(statusIcon).toHaveClass(/lucide lucide-circle-check-big/)
+
   })
 
 
@@ -98,7 +106,6 @@ test.describe('Consulta de Pedido', () => {
   test('deve consultar um pedido Reprovado utilizando Assert Snapshot', async ({ page }) => {
 
     //Test Date
-    //const order = 'VLO-7T2HW8'
     const order = {
       number: 'VLO-7T2HW8',
       status: 'REPROVADO',
@@ -111,15 +118,16 @@ test.describe('Consulta de Pedido', () => {
     }
 
     //Act
-    await page.getByTestId('search-order-id').fill(order.number);
-    await page.getByRole('button', { name: 'Buscar Pedido' }).click();
+    const orderLockupPage = new OrdeLockupPage(page)
+    await orderLockupPage.searchOrder(order.number)
 
     //Assert
     await expect(page.getByTestId(`order-result-${order.number}`)).toMatchAriaSnapshot(`
     - paragraph: Pedido
     - paragraph: ${order.number}
-    - img
-    - text: ${order.status}
+    - status:
+      - img
+      - text: ${order.status}
     - img "Velô Sprint"
     - paragraph: Modelo
     - paragraph: Velô Sprint
@@ -142,6 +150,70 @@ test.describe('Consulta de Pedido', () => {
     - paragraph: À Vista
     - paragraph: /R\\$ \\d+\\.\\d+,\\d+/
     `);
+    const statusBadge = page.getByRole('status').filter({ hasText: order.status })
+
+    await expect(statusBadge).toHaveClass(/bg-red-100/)
+    await expect(statusBadge).toHaveClass(/text-red-700/)
+
+    const statusIcon = statusBadge.locator('svg')
+    await expect(statusIcon).toHaveClass(/lucide lucide-circle-x/)
+  })
+
+  test('deve consultar um pedido EM_ANALISE utilizando Assert Snapshot', async ({ page }) => {
+
+    //Test Date
+    const order = {
+      number: 'VLO-98QS25',
+      status: 'EM_ANALISE',
+      color: 'Midnight Black',
+      wheels: 'sport Wheels',
+      customer: {
+        name: 'teste 0 teste 0',
+        email: 'teste0@teste0.com.br'
+      }
+    }
+
+    //Act
+    const orderLockupPage = new OrdeLockupPage(page)
+    await orderLockupPage.searchOrder(order.number)
+
+    //Assert
+    await expect(page.getByTestId(`order-result-${order.number}`)).toMatchAriaSnapshot(`
+    - paragraph: Pedido
+    - paragraph: ${order.number}
+    - status:
+      - img
+      - text: ${order.status}
+    - img "Velô Sprint"
+    - paragraph: Modelo
+    - paragraph: Velô Sprint
+    - paragraph: Cor
+    - paragraph: ${order.color}
+    - paragraph: Interior
+    - paragraph: cream
+    - paragraph: Rodas
+    - paragraph: ${order.wheels}
+    - heading "Dados do Cliente" [level=4]
+    - paragraph: Nome
+    - paragraph: ${order.customer.name}
+    - paragraph: Email
+    - paragraph: ${order.customer.email}
+    - paragraph: Loja de Retirada
+    - paragraph
+    - paragraph: Data do Pedido
+    - paragraph: /\\d+\\/\\d+\\/\\d+/
+    - heading "Pagamento" [level=4]
+    - paragraph: À Vista
+    - paragraph: /R\\$ \\d+\\.\\d+,\\d+/
+    `);
+
+    const statusBadge = page.getByRole('status').filter({ hasText: order.status })
+
+    await expect(statusBadge).toHaveClass(/bg-amber-100/)
+    await expect(statusBadge).toHaveClass(/text-amber-700/)
+
+    const statusIcon = statusBadge.locator('svg')
+    await expect(statusIcon).toHaveClass(/lucide lucide-clock/)
   })
 })
 
