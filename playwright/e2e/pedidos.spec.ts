@@ -1,31 +1,18 @@
-import { test, expect } from '@playwright/test'
+import { test } from '../support/fixtures'
 
 import { generateOrderCode } from '../support/helperrs'
-
-import { Navbar } from '../support/components/Navbar'
-import { LandingPage } from '../support/pages/LandingPage'
-import { OrderLockupPage, OrderDetails } from '../support/pages/OrderLockupPage'
+import { OrderDetails } from '../support/actions/orderLookupActions'
 
 /// AAA - Arrange, Act, Assert
 
 test.describe('Consulta de Pedido', () => {
 
-  let orderLockupPage: OrderLockupPage
-
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ app }) => {
     // Arrange - Landing
-    await new LandingPage(page).goto()
-
-    // Arrange - Navegação via componente compartilhado
-    await new Navbar(page).orderLockuplink()
-
-    // Assent - Confirmar que estamos na página compartilhada
-    orderLockupPage = new OrderLockupPage(page)
-    await new OrderLockupPage(page).validatePageLoaded()
-
+    await app.orderLookup.open()
   })
 
-  test('deve consultar um pedido aprovado', async ({ page }) => {
+  test('deve consultar um pedido aprovado', async ({ app }) => {
 
     // Test Data
     const order: OrderDetails = {
@@ -41,17 +28,17 @@ test.describe('Consulta de Pedido', () => {
     }
 
     // Act
-    await orderLockupPage.searchOrder(order.number)
+    await app.orderLookup.searchOrder(order.number)
 
     // Assert
-    await orderLockupPage.validadeOrderDetails(order)
+    await app.orderLookup.validateOrderDetails(order)
 
-    // Validação do badge de status encapsulada no Page Object
-    await orderLockupPage.validateStatusBadge(order.status)
+    // Validação do badge de status encapsulada na action
+    await app.orderLookup.validateStatusBadge(order.status)
 
   })
 
-  test('deve consultar um pedido reprovado', async ({ page }) => {
+  test('deve consultar um pedido reprovado', async ({ app }) => {
 
     // Test Data
     const order: OrderDetails = {
@@ -67,16 +54,16 @@ test.describe('Consulta de Pedido', () => {
     }
 
     // Act
-    await orderLockupPage.searchOrder(order.number)
+    await app.orderLookup.searchOrder(order.number)
 
     // Assert
-    await orderLockupPage.validadeOrderDetails(order)
+    await app.orderLookup.validateOrderDetails(order)
 
-    // Validação do badge de status encapsulada no Page Object
-    await orderLockupPage.validateStatusBadge(order.status)
+    // Validação do badge de status encapsulada na action
+    await app.orderLookup.validateStatusBadge(order.status)
   })
 
-  test('deve consultar um pedido em analise', async ({ page }) => {
+  test('deve consultar um pedido em analise', async ({ app }) => {
 
     // Test Data
     const order: OrderDetails = {
@@ -92,28 +79,28 @@ test.describe('Consulta de Pedido', () => {
     }
 
     // Act
-    await orderLockupPage.searchOrder(order.number)
+    await app.orderLookup.searchOrder(order.number)
 
     // Assert
-    await orderLockupPage.validadeOrderDetails(order)
+    await app.orderLookup.validateOrderDetails(order)
 
-    // Validação do badge de status encapsulada no Page Object
-    await orderLockupPage.validateStatusBadge(order.status)
+    // Validação do badge de status encapsulada na action
+    await app.orderLookup.validateStatusBadge(order.status)
   })
 
-  test('deve exibir mensagem quando o pedido não é encontrado', async ({ page }) => {
+  test('deve exibir mensagem quando o pedido não é encontrado', async ({ app }) => {
     const order = generateOrderCode()
 
-    await orderLockupPage.searchOrder(order)
-    await orderLockupPage.validadeOrderDetaNotFound()
+    await app.orderLookup.searchOrder(order)
+    await app.orderLookup.validateOrderNotFound()
 
   })
 
-  test('deve exibir mensagem quando o código do pedido sta fora do padrão', async ({ page }) => {
+  test('deve exibir mensagem quando o código do pedido sta fora do padrão', async ({ app }) => {
     const orderCode = 'XYZ-999-INVALIDO'
 
-    await orderLockupPage.searchOrder(orderCode)
-    await orderLockupPage.validadeOrderDetaNotFound()
+    await app.orderLookup.searchOrder(orderCode)
+    await app.orderLookup.validateOrderNotFound()
 
   })
 })
