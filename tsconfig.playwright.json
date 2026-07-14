@@ -5,6 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["node", "@playwright/test"],
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true,
     "strict": false,

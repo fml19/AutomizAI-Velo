@@ -1,10 +1,17 @@
 import { expect, test } from '../support/fixtures'
-
 import { generateOrderCode } from '../support/helperrs'
 import { OrderDetails } from '../support/actions/orderLookupActions'
+import { insertOrder, deleteOrderByNumber } from '../support/database/orderRepository'
+import testData from '../support/fixtures/orders.json' with {type: 'json'}
+
+type OrderScenario = {
+  title: string
+  order: OrderDetails
+}
+
+const orderScenarios = testData as OrderScenario[]
 
 /// AAA - Arrange, Act, Assert
-
 test.describe('Consulta de Pedido', () => {
 
   test.beforeEach(async ({ app }) => {
@@ -12,81 +19,22 @@ test.describe('Consulta de Pedido', () => {
     await app.orderLookup.open()
   })
 
-  test('deve consultar um pedido aprovado', async ({ app }) => {
+  for (const { title, order } of orderScenarios) {
+    test(title, async ({ app }) => {
+      await deleteOrderByNumber(order.number)
 
-    // Test Data
-    const order: OrderDetails = {
-      number: 'VLO-Z69QA0',
-      status: 'APROVADO',
-      color: 'Glacier Blue',
-      wheels: 'aero Wheels',
-      customer: {
-        name: 'teste2 teste2',
-        email: 'teste2@gmail.com'
-      },
-      payment: 'À Vista'
-    }
+      await insertOrder(order)
 
-    // Act
-    await app.orderLookup.searchOrder(order.number)
+      // Act
+      await app.orderLookup.searchOrder(order.number)
 
-    // Assert
-    await app.orderLookup.validateOrderDetails(order)
+      // Assert
+      await app.orderLookup.validateOrderDetails(order)
 
-    // Validação do badge de status encapsulada na action
-    await app.orderLookup.validateStatusBadge(order.status)
-
-  })
-
-  test('deve consultar um pedido reprovado', async ({ app }) => {
-
-    // Test Data
-    const order: OrderDetails = {
-      number: 'VLO-7T2HW8',
-      status: 'REPROVADO',
-      color: 'Glacier Blue',
-      wheels: 'aero Wheels',
-      customer: {
-        name: 'Teste3 Teste3',
-        email: 'Teste3@Teste.com.br'
-      },
-      payment: 'À Vista'
-    }
-
-    // Act
-    await app.orderLookup.searchOrder(order.number)
-
-    // Assert
-    await app.orderLookup.validateOrderDetails(order)
-
-    // Validação do badge de status encapsulada na action
-    await app.orderLookup.validateStatusBadge(order.status)
-  })
-
-  test('deve consultar um pedido em analise', async ({ app }) => {
-
-    // Test Data
-    const order: OrderDetails = {
-      number: 'VLO-98QS25',
-      status: 'EM_ANALISE',
-      color: 'Midnight Black',
-      wheels: 'sport Wheels',
-      customer: {
-        name: 'teste 0 teste 0',
-        email: 'teste0@teste0.com.br'
-      },
-      payment: 'À Vista'
-    }
-
-    // Act
-    await app.orderLookup.searchOrder(order.number)
-
-    // Assert
-    await app.orderLookup.validateOrderDetails(order)
-
-    // Validação do badge de status encapsulada na action
-    await app.orderLookup.validateStatusBadge(order.status)
-  })
+      // Validação do badge de status encapsulada na action
+      await app.orderLookup.validateStatusBadge(order.status)
+    })
+  }
 
   test('deve exibir mensagem quando o pedido não é encontrado', async ({ app }) => {
     const order = generateOrderCode()
@@ -113,5 +61,3 @@ test.describe('Consulta de Pedido', () => {
 
   })
 })
-
-

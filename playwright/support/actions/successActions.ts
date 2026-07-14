@@ -1,4 +1,5 @@
 import { expect, Page } from '@playwright/test'
+import type { CustomerData } from './checkoutActions'
 
 export function createSuccessActions(page: Page) {
   return {
@@ -15,6 +16,12 @@ export function createSuccessActions(page: Page) {
 
     async expectTotal(total: string) {
       await expect(page.getByText(total)).toBeVisible()
+    },
+
+    async expectCustomer(customer: CustomerData, store: string) {
+      await expect(page.getByText(`${customer.name} ${customer.lastname}`, { exact: true })).toBeVisible()
+      await expect(page.getByText(customer.email, { exact: true })).toBeVisible()
+      await expect(page.getByText(store, { exact: true })).toBeVisible()
     },
 
     async expectApprovedOrderWithTotal(total: string) {

@@ -1,0 +1,53 @@
+[
+  {
+    "title": "deve consultar um pedido aprovado",
+    "order": {
+      "number": "VLO-SE4R01",
+      "status": "APROVADO",
+      "color": "Glacier Blue",
+      "wheels": "aero Wheels",
+      "customer": {
+        "name": "Fernando Papito",
+        "email": "papito@velo.dev",
+        "document": "780.228.290-05",
+        "phone": "(11) 99999-9999"
+      },
+      "payment": "À Vista",
+      "total_price": "40000"
+    }
+  },
+  {
+    "title": "deve consultar um pedido reprovado",
+    "order": {
+      "number": "VLO-SE4R02",
+      "status": "REPROVADO",
+      "color": "Midnight Black",
+      "wheels": "sport Wheels",
+      "customer": {
+        "name": "Teste3 Teste3",
+        "email": "Teste3@Teste.com.br",
+        "document": "780.228.290-05",
+        "phone": "(11) 99999-9999"
+      },
+      "payment": "À Vista",
+      "total_price": "40000"
+    }
+  },
+  {
+    "title": "deve consultar um pedido em analise",
+    "order": {
+      "number": "VLO-SE4R03",
+      "status": "EM_ANALISE",
+      "color": "Lunar White",
+      "wheels": "aero Wheels",
+      "customer": {
+        "name": "teste 0 teste 0",
+        "email": "teste0@teste0.com.br",
+        "document": "780.228.290-05",
+        "phone": "(11) 99999-9999"
+      },
+      "payment": "À Vista",
+      "total_price": "40000"
+    }
+  }
+]

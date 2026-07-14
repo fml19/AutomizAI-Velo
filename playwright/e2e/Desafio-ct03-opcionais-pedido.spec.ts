@@ -1,4 +1,5 @@
 import { test, type App } from '../support/fixtures'
+import { deleteOrderByCpf } from '../support/database/orderRepository'
 
 type OptionalFeature = 'Precision Park' | 'Flux Capacitor'
 
@@ -84,6 +85,16 @@ const ct0308: VehicleScenario = {
 }
 
 async function createOrderWithConfiguration(app: App, scenario: VehicleScenario) {
+  const customer = {
+    name: 'Cliente',
+    lastname: scenario.id,
+    email: `cliente.${scenario.id.toLowerCase()}.${Date.now()}@email.com`,
+    phone: '11999999999',
+    document: `1234567890${scenario.id.slice(-1)}`,
+  }
+
+  await deleteOrderByCpf(customer.document)
+
   await app.configurator.resetState()
   await app.configurator.openFromLanding()
 
@@ -100,13 +111,7 @@ async function createOrderWithConfiguration(app: App, scenario: VehicleScenario)
 
   await app.checkout.createCashOrder(
     scenario.expectedTotal,
-    {
-      name: 'Cliente',
-      surname: scenario.id,
-      email: `cliente.${scenario.id.toLowerCase()}.${Date.now()}@email.com`,
-      phone: '11999999999',
-      cpf: `1234567890${scenario.id.slice(-1)}`,
-    },
+    customer,
     'Velô Paulista - Av. Paulista, 1000',
   )
 

@@ -1,6 +1,7 @@
 import { Page, expect } from '@playwright/test'
 
 export function createConfiguratorActions(page: Page) {
+  const optionalCheckbox = (name: string | RegExp) => page.getByRole('checkbox', { name })
   return {
     async resetState() {
       await page.goto('/')
@@ -45,5 +46,19 @@ export function createConfiguratorActions(page: Page) {
     async submitOrder() {
       await page.getByRole('button', { name: 'Monte o Seu' }).click()
     },
+
+    async checkOptional(name: string | RegExp) {
+      await expect(optionalCheckbox(name)).toBeVisible()
+      await optionalCheckbox(name).check()
+    },
+
+    async uncheckOptional(name: string | RegExp) {
+      await expect(optionalCheckbox(name)).toBeVisible()
+      await optionalCheckbox(name).uncheck()
+    },
+
+    async finishConfigurator() {
+      await page.getByRole('button', { name: 'Monte o seu' }).click()
+    }
   }
 }
