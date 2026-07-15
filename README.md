@@ -221,11 +221,17 @@ O Playwright inicia o servidor Vite automaticamente quando necessário.
 # Executar todos os testes no Chromium
 npx playwright test --project=chromium
 
+# Executar via terminal
+yarn playwright test
+
 # Executar um arquivo específico
 npx playwright test playwright/e2e/checkout.spec.ts --project=chromium
 
 # Executar com o navegador visível
 npx playwright test --project=chromium --headed
+
+# Executar o primeiro de dois shards, dividindo a suíte para execução paralela
+yarn playwright test --shard=1/2
 
 # Abrir o último relatório HTML
 npx playwright show-report
@@ -235,3 +241,5 @@ npx tsc -p tsconfig.playwright.json --noEmit
 ```
 
 Os cenários que criam pedidos reais precisam de acesso ao Supabase e de uma `DATABASE_URL` válida. Para reduzir concorrência sobre o banco durante a execução local desses cenários, use `--workers=1` quando necessário.
+
+A opção `--shard=1/2` divide a suíte em duas partes e executa somente o primeiro shard. Ela é útil para distribuir os testes entre dois processos ou jobs de CI e reduzir o tempo total da execução. Para executar a outra parte da suíte, utilize `yarn playwright test --shard=2/2`; os dois comandos são necessários para cobrir todos os testes.

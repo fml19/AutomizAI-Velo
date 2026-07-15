@@ -109,5 +109,10 @@ export function createCheckoutActions(page: Page) {
       await this.acceptTerms()
       await this.submit()
     },
+
+    async expectResult(status: string) {
+      await expect(page).toHaveURL(/\/success$/)
+      await expect(page.getByRole('heading', { name: status })).toBeVisible()
+    },
   }
 }
