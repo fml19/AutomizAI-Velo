@@ -11,6 +11,10 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DOTENV_CONFIG_QUIET: "true"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,9 +29,7 @@ jobs:
         run: yarn playwright install --with-deps
 
       - name: Run Playwright tests
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: yarn playwright test
+        run: yarn playwright test --reporter=line
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
