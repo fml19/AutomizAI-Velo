@@ -14,6 +14,7 @@ export function createConfiguratorActions(page: Page) {
     },
 
     async openFromLanding() {
+      await page.goto('/')
       await expect(page.getByTestId('hero-section')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Velô Sprint', level: 1 })).toBeVisible()
       await page.getByRole('link', { name: /Configure Agora/ }).click()

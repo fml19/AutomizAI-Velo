@@ -3,9 +3,13 @@ import type { CustomerData } from './checkoutActions'
 
 export function createSuccessActions(page: Page) {
   return {
-    async expectApprovedOrder() {
+    async expectOrderStatus(status: string) {
       await expect(page).toHaveURL(/\/success$/)
-      await expect(page.getByTestId('success-status')).toHaveText('Pedido Aprovado!')
+      await expect(page.getByTestId('success-status')).toHaveText(status)
+    },
+
+    async expectApprovedOrder() {
+      await this.expectOrderStatus('Pedido Aprovado!')
     },
 
     async expectOrderNumberVisible() {

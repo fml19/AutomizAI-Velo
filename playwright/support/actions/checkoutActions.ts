@@ -41,8 +41,8 @@ export function createCheckoutActions(page: Page) {
     async fillCustomerData(customer: CustomerData) {
       await page.getByTestId('checkout-name').fill(customer.name)
       await page.getByTestId('checkout-lastname').fill(customer.lastname)
-      await page.getByLabel('Email').fill(customer.email)
-      await page.getByLabel('Telefone').fill(customer.phone)
+      await page.getByTestId('checkout-email').fill(customer.email)
+      await page.getByTestId('checkout-phone').fill(customer.phone)
       await page.getByTestId('checkout-document').fill(customer.document)
     },
 
@@ -61,6 +61,10 @@ export function createCheckoutActions(page: Page) {
       await paymentButton.click()
     },
 
+    async fillDownPayment(value: string) {
+      await page.getByTestId('input-entry-value').fill(value)
+    },
+
     async selectCashPayment(total: string) {
       const cashPayment = page.getByRole('button', { name: /À Vista/ })
       await expect(cashPayment).toBeVisible()
@@ -71,6 +75,24 @@ export function createCheckoutActions(page: Page) {
 
     async submit() {
       await page.getByRole('button', { name: 'Confirmar Pedido' }).click()
+    },
+
+    async submitPayment(
+      paymentMethod: string,
+      options: { downPayment?: string; expectedTotal?: string } = {}
+    ) {
+      await this.selectPaymentMethod(paymentMethod)
+
+      if (options.downPayment) {
+        await this.fillDownPayment(options.downPayment)
+      }
+
+      if (options.expectedTotal) {
+        await this.expectSummaryTotal(options.expectedTotal)
+      }
+
+      await this.acceptTerms()
+      await this.submit()
     },
 
     async expectSubmitting() {

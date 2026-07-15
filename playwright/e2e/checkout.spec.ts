@@ -1,6 +1,28 @@
-import { any } from 'zod/v4'
-import { test, expect } from '../support/fixtures'
-import { deleteOrderByCpf } from '../support/database/orderRepository'
+import { test, expect, type App } from '../support/fixtures'
+import { deleteOrderByCustomer } from '../support/database/orderRepository'
+import { mockCreditAnalysis } from '../support/mock.api'
+
+type PaymentCustomer = {
+  name: string
+  lastname: string
+  email: string
+  phone: string
+  document: string
+  store: string
+  totalPrice: string
+  paymentMethod: string
+  downPayment?: string
+}
+
+async function prepareBasicCheckout(app: App, customer: PaymentCustomer) {
+  await deleteOrderByCustomer(customer)
+  await app.configurator.openFromLanding()
+  await app.configurator.expectPrice(customer.totalPrice)
+  await app.configurator.finishConfigurator()
+  await app.checkout.expectLoaded()
+  await app.checkout.fillCustomerData(customer)
+  await app.checkout.selectStore(customer.store)
+}
 
 test.describe('Checkout', () => {
 
@@ -122,9 +144,9 @@ test.describe('Checkout', () => {
     })
   })
 
-  test.describe('Pagamento à vista', () => {
-    test('CT05 - deve criar um pedido aprovado com pagamento à vista', async ({ page, app }) => {
-      const customer = {
+  test.describe('Pagamento e Confirmação', () => {
+    test('CT05 - deve criar um pedido aprovado com pagamento à vista', async ({ app }) => {
+      const customer: PaymentCustomer = {
         name: 'Fernando',
         lastname: 'ML',
         email: 'fernando.ml.ct05@example.com',
@@ -132,31 +154,135 @@ test.describe('Checkout', () => {
         document: '92113486091',
         store: 'Velô Paulista',
         totalPrice: 'R$ 40.000,00',
-        PaymentMethod: 'À Vista'
+        paymentMethod: 'À Vista'
       }
 
-      await deleteOrderByCpf(customer.document)
-
       // Arrange
-      await page.goto('/')
-      await page.getByRole('link', { name: /Configure Agora/i }).click()
+      await prepareBasicCheckout(app, customer)
 
-      await app.configurator.expectPrice(customer.totalPrice)
-      await app.configurator.finishConfigurator()
-      await app.checkout.expectLoaded()
-
-      await app.checkout.fillCustomerData(customer)
-      await app.checkout.selectStore(customer.store)
-
-      //Act
-      await app.checkout.selectPaymentMethod(customer.PaymentMethod)
-      await app.checkout.expectSummaryTotal(customer.totalPrice)
-      await app.checkout.acceptTerms()
-      await app.checkout.submit()
+      // Act
+      await app.checkout.submitPayment(customer.paymentMethod, { expectedTotal: customer.totalPrice })
 
       // Assert
-      await expect(page).toHaveURL(/\/success/)
-      await expect(page.getByRole('heading', { name: 'Pedido Aprovado!' }))
+      await app.success.expectOrderStatus('Pedido Aprovado!')
+    })
+
+    test('deve aprovar automaticamente o crédito quando o score do CPF for maior que 700 no financiamento', async ({ page, app }) => {
+      const customer: PaymentCustomer = {
+        name: 'Lara',
+        lastname: 'Croft',
+        email: 'lara.croft.ct06@example.com',
+        phone: '11987654321',
+        document: '24688318022',
+        store: 'Velô Paulista',
+        totalPrice: 'R$ 40.000,00',
+        paymentMethod: 'Financiamento'
+      }
+
+      // Arrange
+      await mockCreditAnalysis(page, 701)
+      await prepareBasicCheckout(app, customer)
+
+      // Act
+      await app.checkout.submitPayment(customer.paymentMethod)
+
+      // Assert
+      await app.success.expectOrderStatus('Pedido Aprovado!')
+    })
+
+    test('deve encaminhar para análise de crédito quando o score do CPF for entre 501 e 700 no financiamento', async ({ page, app }) => {
+      const customer: PaymentCustomer = {
+        name: 'Lucy',
+        lastname: 'Suan',
+        email: 'Lucy@suan.com',
+        document: '74690251037',
+        phone: '(11) 99999-9999',
+        store: 'Velô Paulista',
+        paymentMethod: 'Financiamento',
+        totalPrice: 'R$ 40.000,00'
+      }
+
+      // Arrange
+      await mockCreditAnalysis(page, 600)
+      await prepareBasicCheckout(app, customer)
+
+      // Act
+      await app.checkout.submitPayment(customer.paymentMethod)
+
+      // Assert
+      await app.success.expectOrderStatus('Pedido em Análise!')
+    })
+
+    test('deve reprovar o crédito sem entrada quando o score do CPF for menor ou igual a 500 no financiamento', async ({ page, app }) => {
+      const customer: PaymentCustomer = {
+        name: 'Bruce',
+        lastname: 'Wayne',
+        email: 'bruce@wayne.com',
+        document: '52998224725',
+        phone: '(11) 99999-9999',
+        store: 'Velô Paulista',
+        paymentMethod: 'Financiamento',
+        totalPrice: 'R$ 40.000,00'
+      }
+
+      // Arrange
+      await mockCreditAnalysis(page, 500)
+      await prepareBasicCheckout(app, customer)
+
+      // Act
+      await app.checkout.submitPayment(customer.paymentMethod)
+
+      // Assert
+      await app.success.expectOrderStatus('Pedido Reprovado!')
+    })
+
+    test('deve reprovar o crédito quando o score do CPF for menor ou igual a 500 no financiamento com entrada igual a 50%', async ({ page, app }) => {
+      const customer: PaymentCustomer = {
+        name: 'Peter',
+        lastname: 'Parker',
+        email: 'peter@parker.com',
+        document: '11144477735',
+        phone: '(11) 98888-8888',
+        store: 'Velô Paulista',
+        paymentMethod: 'Financiamento',
+        totalPrice: 'R$ 40.000,00',
+        downPayment: '10000'
+      }
+
+      // Arrange
+      await mockCreditAnalysis(page, 500)
+      await prepareBasicCheckout(app, customer)
+
+      // Act
+      await app.checkout.submitPayment(customer.paymentMethod, { downPayment: customer.downPayment })
+
+      // Assert
+      await app.success.expectOrderStatus('Pedido Reprovado!')
+    })
+
+    test('deve aprovar o crédito quando o score do CPF for menor ou igual a 500 no financiamento com entrada maior que 50%', async ({ page, app }) => {
+      const customer: PaymentCustomer = {
+        name: 'Erza',
+        lastname: 'Scarlet',
+        email: 'erza@scarlet.com',
+        document: '16899535009',
+        phone: '(11) 98888-8888',
+        store: 'Velô Paulista',
+        paymentMethod: 'Financiamento',
+        totalPrice: 'R$ 40.000,00',
+        downPayment: '30000'
+      }
+
+      // Arrange
+      await mockCreditAnalysis(page, 300)
+      await prepareBasicCheckout(app, customer)
+
+      // Act
+      await app.checkout.submitPayment(customer.paymentMethod, { downPayment: customer.downPayment })
+
+      // Assert
+      await app.success.expectOrderStatus('Pedido Aprovado!')
     })
   })
+
 })

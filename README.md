@@ -18,23 +18,66 @@ Uma SPA (Single Page Application) que permite:
 
 | Categoria | Tecnologias |
 |-----------|-------------|
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
+| **Frontend** | React 18.3.1, TypeScript 5.8.3, Vite 5.4.19, Tailwind CSS 3.4.17, shadcn/ui |
 | **Estado** | Zustand (global), React Hook Form (formulários) |
 | **Validação** | Zod |
 | **Data Fetching** | TanStack Query |
 | **Backend** | Supabase (PostgreSQL + Edge Functions) |
+| **Testes E2E** | Playwright 1.61.1 + Chromium |
+
+---
+
+## Pré-requisitos e versões
+
+As versões abaixo correspondem ao ambiente atualmente utilizado para desenvolver e executar o projeto:
+
+| Ferramenta | Versão validada | Obrigatória? | Finalidade |
+|------------|-----------------|--------------|------------|
+| **Node.js** | 24.17.0 | Sim | Executar Vite, TypeScript e os testes |
+| **npm** | 11.13.0 | Uma opção | Instalar pacotes e executar scripts |
+| **Yarn Classic** | 1.22.22 | Uma opção | Gerenciador associado ao `yarn.lock` |
+| **Git** | 2.51.1 | Recomendado | Clonar e versionar o projeto |
+| **Playwright** | 1.61.1 | Sim para E2E | Automação dos testes no Chromium |
+| **TypeScript** | 5.8.3 | Sim | Compilação e validação dos arquivos TypeScript |
+| **Supabase CLI** | 2.107.0 | Somente para banco/functions | Migrações e deploy das Edge Functions |
+| **VS Code** | 1.128.0 | Opcional | Editor utilizado no projeto |
+
+Não é necessário instalar PostgreSQL localmente quando `DATABASE_URL` aponta para o banco remoto do Supabase. As demais bibliotecas e suas versões são instaladas a partir de `package.json` e `yarn.lock`.
+
+### Extensões recomendadas do VS Code
+
+O arquivo `.vscode/extensions.json` recomenda estas extensões:
+
+| Extensão | ID | Versão validada | Finalidade |
+|----------|----|-----------------|------------|
+| **Playwright Test for VS Code** | `ms-playwright.playwright` | 1.1.19 | Executar e depurar testes E2E pelo editor |
+| **Prettier - Code formatter** | `esbenp.prettier-vscode` | 12.4.0 | Formatação de código |
+
+Instalação pelo terminal do VS Code:
+
+```bash
+code --install-extension ms-playwright.playwright
+code --install-extension esbenp.prettier-vscode
+```
+
+As extensões são opcionais para a execução via terminal e podem receber atualizações compatíveis no Marketplace.
 
 ---
 
 ## Instalação
 
 ```bash
-# Instalar dependências
+# Instalar dependências usando o lockfile do projeto
 yarn install
 
+# Instalar o navegador usado pelos testes E2E
+npx playwright install chromium
+
 # Rodar em desenvolvimento
-yarn run dev
+yarn dev
 ```
+
+Alternativamente, é possível usar `npm install` e `npm run dev`. Para reproduzir exatamente as versões registradas no repositório, prefira Yarn e preserve o `yarn.lock`.
 
 Acesse: `http://localhost:5173`
 
@@ -57,9 +100,17 @@ Crie o arquivo `.env` na raiz do projeto:
 VITE_SUPABASE_PROJECT_ID="seu_project_id"
 VITE_SUPABASE_PUBLISHABLE_KEY="sua_chave_anon_publica"
 VITE_SUPABASE_URL="https://seu_project_id.supabase.co"
+
+# Necessária para os testes que consultam, inserem ou removem pedidos diretamente
+DATABASE_URL="postgresql://usuario:senha@host:porta/banco"
+
+# Opcional; o padrão é http://localhost:5173/
+BASE_URL="http://localhost:5173/"
 ```
 
 > Encontre essas informações em: **Project Settings → API**
+
+> Nunca versione o `.env`. Esse arquivo já está ignorado pelo Git e contém credenciais sensíveis.
 
 ### 3. Deploy (banco + functions)
 
@@ -155,7 +206,32 @@ Landing → Configurador → Checkout → Análise de Crédito → Confirmação
 ## Scripts
 
 ```bash
-npm run dev      # Desenvolvimento
-npm run build    # Build de produção
-npm run lint     # Verificar código
+npm run dev        # Servidor de desenvolvimento em http://localhost:5173
+npm run build      # Build de produção
+npm run build:dev  # Build no modo development
+npm run preview    # Servir localmente o build gerado
+npm run lint       # Verificar o código com ESLint
 ```
+
+### Testes E2E
+
+O Playwright inicia o servidor Vite automaticamente quando necessário.
+
+```bash
+# Executar todos os testes no Chromium
+npx playwright test --project=chromium
+
+# Executar um arquivo específico
+npx playwright test playwright/e2e/checkout.spec.ts --project=chromium
+
+# Executar com o navegador visível
+npx playwright test --project=chromium --headed
+
+# Abrir o último relatório HTML
+npx playwright show-report
+
+# Validar a tipagem dos testes
+npx tsc -p tsconfig.playwright.json --noEmit
+```
+
+Os cenários que criam pedidos reais precisam de acesso ao Supabase e de uma `DATABASE_URL` válida. Para reduzir concorrência sobre o banco durante a execução local desses cenários, use `--workers=1` quando necessário.

@@ -49,3 +49,13 @@ export async function deleteOrderByCpf(cpf: string) {
     .where('customer_cpf', 'in', [digits, formattedCpf])
     .execute()
 }
+
+
+export async function deleteOrderByEmail(email: string) {
+  await db.deleteFrom('orders').where('customer_email', '=', email).execute()
+}
+
+export async function deleteOrderByCustomer(customer: { document: string; email: string }) {
+  await deleteOrderByCpf(customer.document)
+  await deleteOrderByEmail(customer.email)
+}
