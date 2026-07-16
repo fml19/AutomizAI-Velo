@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { calculateFinancing } from '../domain/checkout';
 
 export type ExteriorColor = 'glacier-blue' | 'midnight-black' | 'lunar-white';
 export type InteriorColor = 'carbon-black' | 'deep-blue';
@@ -82,11 +83,7 @@ export const calculateTotalPrice = (config: CarConfiguration): number => {
 };
 
 export const calculateInstallment = (total: number): number => {
-  // 12x with 2% monthly compound interest
-  const monthlyRate = 0.02;
-  const months = 12;
-  const installment = (total * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
-  return Math.round(installment * 100) / 100;
+  return calculateFinancing({ totalPrice: total, entryValue: 0 }).installmentValue;
 };
 
 export const formatPrice = (value: number): string => {

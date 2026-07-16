@@ -27,6 +27,7 @@ import {
 } from '@/store/configuratorStore';
 import { createOrder } from '@/hooks/useOrders';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateFinancing, determineCreditStatus } from '@/domain/checkout';
 
 import logo from '@/assets/brand.svg';
 import glacierBlueAero from '@/assets/glacier-blue-aero-wheels.png';
@@ -95,12 +96,13 @@ const Order = () => {
   });
 
   const totalPrice = calculateTotalPrice(configuration);
-  
-  // Cálculo dinâmico das parcelas baseado no valor da entrada
-  // Parcela = (Total - Entrada) / 12 * 1.02
-  const amountToFinance = Math.max(0, totalPrice - entryValue);
-  const installmentValue = (amountToFinance / 12) * 1.02;
-  const totalFinanced = installmentValue * 12;
+  const financing = calculateFinancing({ totalPrice, entryValue });
+  const {
+    amountToFinance,
+    installmentValue,
+    totalFinanced,
+    interestAmount,
+  } = financing;
 
   const handleChange = (field: keyof FormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -148,26 +150,11 @@ const Order = () => {
           return;
         }
 
-        const score = data.score;
-        const entryPercentage = entryValue / totalPrice;
-
-        // Regras de Decisão (Ordem de Avaliação)
-        // 1️⃣ Regra da Entrada Alta: SE (Entrada >= 50% do Total) E (Score < 700) → APROVADO
-        if (entryPercentage >= 0.5 && score < 700) {
-          orderStatus = 'APROVADO';
-        }
-        // 2️⃣ Score Alto: SE Score > 700 → APROVADO
-        else if (score > 700) {
-          orderStatus = 'APROVADO';
-        }
-        // 3️⃣ Score Médio: SE Score entre 501 e 700 → EM_ANALISE
-        else if (score >= 501 && score <= 700) {
-          orderStatus = 'EM_ANALISE';
-        }
-        // 4️⃣ Score Baixo: SE Score <= 500 → REPROVADO
-        else {
-          orderStatus = 'REPROVADO';
-        }
+        orderStatus = determineCreditStatus({
+          score: data.score,
+          entryValue,
+          totalPrice,
+        });
 
       } catch (err) {
         console.error('Credit analysis network error:', err);
@@ -184,7 +171,7 @@ const Order = () => {
     }
 
     const finalPrice = paymentMethod === 'financiamento' 
-      ? (entryValue + totalFinanced) 
+      ? financing.finalPrice
       : totalPrice;
 
     const optionalsSanitized = (
@@ -457,7 +444,7 @@ const Order = () => {
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Juros totais:{' '}
-                        <span className="font-medium">{formatPrice(totalFinanced - amountToFinance)}</span>
+                        <span className="font-medium">{formatPrice(interestAmount)}</span>
                       </p>
                     </div>
                   </div>
@@ -555,7 +542,7 @@ const Order = () => {
                     data-testid="summary-total-price"
                     className="text-2xl font-display font-semibold"
                   >
-                    {formatPrice(paymentMethod === 'financiamento' ? totalFinanced : totalPrice)}
+                    {formatPrice(paymentMethod === 'financiamento' ? financing.finalPrice : totalPrice)}
                   </span>
                 </div>
               </div>
