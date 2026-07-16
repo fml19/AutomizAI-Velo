@@ -1,0 +1,89 @@
+# Workflow de Integração Contínua (CI)
+# Objetivo: executar os testes unitários e E2E a cada push ou pull request.
+# Os jobs são independentes para facilitar a manutenção e a expansão futura.
+
+name: Continuous Integration
+
+# Executa o workflow em pushes e pull requests nas branches principais.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Versão do Node.js utilizada pelo job de testes unitários.
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # Executa os testes unitários da aplicação com Vitest.
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # Obtém o código do repositório.
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Configura o ambiente Node.js na versão definida globalmente.
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Habilita o Corepack para gerenciamento do Yarn.
+      - name: Enable Corepack
+        run: corepack enable
+
+      # Instala as dependências preservando as versões do yarn.lock.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # Executa os testes unitários com Vitest.
+      - name: Run unit tests
+        run: yarn test
+
+  # Executa os testes de ponta a ponta da aplicação com Playwright.
+  test:
+    # Limita a duração máxima do job para evitar execuções presas.
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    # Disponibiliza credenciais e configurações necessárias aos testes E2E.
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      DOTENV_CONFIG_QUIET: "true"
+      PLAYWRIGHT_HTML_OPEN: "never"
+
+    steps:
+      # Obtém o código do repositório.
+      - uses: actions/checkout@v7
+
+      # Configura a versão LTS atual do Node.js.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # Instala o Yarn e as dependências do projeto.
+      - name: Install dependencies
+        run: npm install -g yarn && yarn
+
+      # Instala os navegadores e as dependências de sistema do Playwright.
+      - name: Install Playwright Browsers
+        run: yarn playwright install --with-deps
+
+      # Executa a suíte E2E e gera saídas nos formatos linha e HTML.
+      - name: Run Playwright tests
+        run: yarn playwright test --reporter=line,html
+
+      # Publica o relatório HTML mesmo quando algum teste falha.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: error
+          retention-days: 30

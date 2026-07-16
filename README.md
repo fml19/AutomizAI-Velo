@@ -5,6 +5,7 @@ Aplicação web em React para configuração e compra do veículo elétrico **Ve
 ## Sobre o Projeto
 
 Uma SPA (Single Page Application) que permite:
+
 - Personalizar cores, rodas e opcionais do veículo
 - Calcular preços em tempo real
 - Realizar pedidos com análise de crédito
@@ -16,14 +17,14 @@ Uma SPA (Single Page Application) que permite:
 
 ## Stack Tecnológica
 
-| Categoria | Tecnologias |
-|-----------|-------------|
-| **Frontend** | React 18.3.1, TypeScript 5.8.3, Vite 5.4.19, Tailwind CSS 3.4.17, shadcn/ui |
-| **Estado** | Zustand (global), React Hook Form (formulários) |
-| **Validação** | Zod |
-| **Data Fetching** | TanStack Query |
-| **Backend** | Supabase (PostgreSQL + Edge Functions) |
-| **Testes E2E** | Playwright 1.61.1 + Chromium |
+| Categoria         | Tecnologias                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| **Frontend**      | React 18.3.1, TypeScript 5.8.3, Vite 5.4.19, Tailwind CSS 3.4.17, shadcn/ui |
+| **Estado**        | Zustand (global), React Hook Form (formulários)                             |
+| **Validação**     | Zod                                                                         |
+| **Data Fetching** | TanStack Query                                                              |
+| **Backend**       | Supabase (PostgreSQL + Edge Functions)                                      |
+| **Testes E2E**    | Playwright 1.61.1 + Chromium                                                |
 
 ---
 
@@ -31,16 +32,16 @@ Uma SPA (Single Page Application) que permite:
 
 As versões abaixo correspondem ao ambiente atualmente utilizado para desenvolver e executar o projeto:
 
-| Ferramenta | Versão validada | Obrigatória? | Finalidade |
-|------------|-----------------|--------------|------------|
-| **Node.js** | 24.17.0 | Sim | Executar Vite, TypeScript e os testes |
-| **npm** | 11.13.0 | Uma opção | Instalar pacotes e executar scripts |
-| **Yarn Classic** | 1.22.22 | Uma opção | Gerenciador associado ao `yarn.lock` |
-| **Git** | 2.51.1 | Recomendado | Clonar e versionar o projeto |
-| **Playwright** | 1.61.1 | Sim para E2E | Automação dos testes no Chromium |
-| **TypeScript** | 5.8.3 | Sim | Compilação e validação dos arquivos TypeScript |
-| **Supabase CLI** | 2.107.0 | Somente para banco/functions | Migrações e deploy das Edge Functions |
-| **VS Code** | 1.128.0 | Opcional | Editor utilizado no projeto |
+| Ferramenta       | Versão validada | Obrigatória?                 | Finalidade                                     |
+| ---------------- | --------------- | ---------------------------- | ---------------------------------------------- |
+| **Node.js**      | 24.17.0         | Sim                          | Executar Vite, TypeScript e os testes          |
+| **npm**          | 11.13.0         | Uma opção                    | Instalar pacotes e executar scripts            |
+| **Yarn Classic** | 1.22.22         | Uma opção                    | Gerenciador associado ao `yarn.lock`           |
+| **Git**          | 2.51.1          | Recomendado                  | Clonar e versionar o projeto                   |
+| **Playwright**   | 1.61.1          | Sim para E2E                 | Automação dos testes no Chromium               |
+| **TypeScript**   | 5.8.3           | Sim                          | Compilação e validação dos arquivos TypeScript |
+| **Supabase CLI** | 2.107.0         | Somente para banco/functions | Migrações e deploy das Edge Functions          |
+| **VS Code**      | 1.128.0         | Opcional                     | Editor utilizado no projeto                    |
 
 Não é necessário instalar PostgreSQL localmente quando `DATABASE_URL` aponta para o banco remoto do Supabase. As demais bibliotecas e suas versões são instaladas a partir de `package.json` e `yarn.lock`.
 
@@ -48,10 +49,10 @@ Não é necessário instalar PostgreSQL localmente quando `DATABASE_URL` aponta 
 
 O arquivo `.vscode/extensions.json` recomenda estas extensões:
 
-| Extensão | ID | Versão validada | Finalidade |
-|----------|----|-----------------|------------|
-| **Playwright Test for VS Code** | `ms-playwright.playwright` | 1.1.19 | Executar e depurar testes E2E pelo editor |
-| **Prettier - Code formatter** | `esbenp.prettier-vscode` | 12.4.0 | Formatação de código |
+| Extensão                        | ID                         | Versão validada | Finalidade                                |
+| ------------------------------- | -------------------------- | --------------- | ----------------------------------------- |
+| **Playwright Test for VS Code** | `ms-playwright.playwright` | 1.1.19          | Executar e depurar testes E2E pelo editor |
+| **Prettier - Code formatter**   | `esbenp.prettier-vscode`   | 12.4.0          | Formatação de código                      |
 
 Instalação pelo terminal do VS Code:
 
@@ -132,6 +133,50 @@ yarn supabase functions deploy
 
 Pronto! O banco e as functions estarão configurados.
 
+### 4. Deploy do frontend no Vercel (Vite)
+
+O frontend pode ser publicado no Vercel diretamente a partir deste repositório. Ao importar o projeto, utilize estas configurações:
+
+| Configuração     | Valor                            |
+| ---------------- | -------------------------------- |
+| Framework Preset | `Vite`                           |
+| Build Command    | `yarn build`                     |
+| Output Directory | `dist`                           |
+| Install Command  | `yarn install --frozen-lockfile` |
+
+Cadastre no projeto do Vercel, em **Settings → Environment Variables**, as variáveis usadas no build:
+
+```env
+VITE_SUPABASE_URL="https://seu_project_id.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="sua_chave_anon_publica"
+```
+
+Configure essas variáveis pelo menos para o ambiente **Production**. Se os Preview Deployments também precisarem acessar o Supabase, habilite-as para **Preview**. O `vite.config.ts` interrompe o build caso alguma variável obrigatória esteja ausente ou a URL do Supabase seja inválida.
+
+Como a aplicação usa `BrowserRouter`, o arquivo `vercel.json` na raiz redireciona as rotas da SPA para o `index.html`:
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+```
+
+Esse rewrite permite abrir ou atualizar diretamente páginas como `/configure`, `/order` e `/lookup` sem receber `404 NOT_FOUND` do Vercel. Arquivos estáticos gerados pelo Vite continuam sendo servidos a partir de `dist/assets`.
+
+Antes de publicar, valide o build localmente:
+
+```bash
+yarn build
+yarn preview
+```
+
+Após salvar as configurações no Vercel, execute um novo deploy. A variável `BASE_URL` é usada pelo Playwright e não é necessária para o build do frontend; configure-a no ambiente de testes com a URL publicada caso a suíte E2E deva validar a produção.
+
 ---
 
 ## Estrutura Principal
@@ -152,13 +197,13 @@ src/
 
 ## Rotas
 
-| Rota | Descrição |
-|------|-----------|
-| `/` | Landing page |
+| Rota         | Descrição               |
+| ------------ | ----------------------- |
+| `/`          | Landing page            |
 | `/configure` | Configurador do veículo |
-| `/order` | Checkout/Pedido |
-| `/success` | Confirmação do pedido |
-| `/lookup` | Consulta de pedidos |
+| `/order`     | Checkout/Pedido         |
+| `/success`   | Confirmação do pedido   |
+| `/lookup`    | Consulta de pedidos     |
 
 ---
 
@@ -175,6 +220,7 @@ src/
 ## Banco de Dados
 
 **Tabela `orders`** — campos principais:
+
 - `order_number` — Formato: VLO-XXXXXX
 - `color`, `wheel_type`, `optionals` — Configuração
 - `customer_name`, `customer_email`, `customer_cpf` — Cliente
@@ -185,13 +231,13 @@ src/
 
 ## Análise de Crédito
 
-| Score | Resultado |
-|-------|-----------|
-| > 700 | Aprovado |
+| Score   | Resultado  |
+| ------- | ---------- |
+| > 700   | Aprovado   |
 | 501-700 | Em análise |
-| ≤ 500 | Reprovado |
+| ≤ 500   | Reprovado  |
 
-*Se entrada ≥ 50% do total, aprova mesmo com score < 700*
+_Se entrada ≥ 50% do total, aprova mesmo com score < 700_
 
 ---
 
@@ -253,11 +299,11 @@ O workflow `.github/workflows/playwright.yml` executa a suíte completa em pushe
 
 O repositório precisa ter os seguintes **Repository secrets** configurados em **Settings → Secrets and variables → Actions**:
 
-| Secret | Finalidade |
-|--------|------------|
-| `DATABASE_URL` | Conexão PostgreSQL usada pela preparação e limpeza dos dados de teste |
-| `VITE_SUPABASE_URL` | URL do projeto Supabase utilizada pela aplicação Vite |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública utilizada pelo cliente Supabase no navegador |
+| Secret                          | Finalidade                                                            |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `DATABASE_URL`                  | Conexão PostgreSQL usada pela preparação e limpeza dos dados de teste |
+| `VITE_SUPABASE_URL`             | URL do projeto Supabase utilizada pela aplicação Vite                 |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública utilizada pelo cliente Supabase no navegador            |
 
 Os valores devem corresponder ao `.env` local, mas o arquivo e as credenciais nunca devem ser adicionados ao Git.
 
