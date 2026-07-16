@@ -153,7 +153,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY="sua_chave_anon_publica"
 
 Configure essas variáveis pelo menos para o ambiente **Production**. Se os Preview Deployments também precisarem acessar o Supabase, habilite-as para **Preview**. O `vite.config.ts` interrompe o build caso alguma variável obrigatória esteja ausente ou a URL do Supabase seja inválida.
 
-Como a aplicação usa `BrowserRouter`, o arquivo `vercel.json` na raiz redireciona as rotas da SPA para o `index.html`:
+Como a aplicação usa `BrowserRouter`, o arquivo `vercel.json` na raiz redireciona as rotas da SPA para o `index.html` e controla o deploy automático integrado ao Git:
 
 ```json
 {
@@ -162,11 +162,49 @@ Como a aplicação usa `BrowserRouter`, o arquivo `vercel.json` na raiz redireci
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  }
 }
 ```
 
-Esse rewrite permite abrir ou atualizar diretamente páginas como `/configure`, `/order` e `/lookup` sem receber `404 NOT_FOUND` do Vercel. Arquivos estáticos gerados pelo Vite continuam sendo servidos a partir de `dist/assets`.
+As linhas têm estas finalidades:
+
+- `rewrites`: permite abrir ou atualizar diretamente páginas como `/configure`, `/order` e `/lookup` sem receber `404 NOT_FOUND` do Vercel.
+- `destination: "/index.html"`: entrega o ponto de entrada do Vite para que o `BrowserRouter` resolva a rota no navegador.
+- `git.deploymentEnabled.main: false`: desabilita o deploy automático causado por pushes na branch `main`.
+
+Essa configuração não desabilita deploys manuais e não bloqueia automaticamente outras branches. Como branches não listadas mantêm o comportamento padrão da Vercel, elas ainda podem gerar Preview Deployments quando o repositório está conectado ao Git. Para desativar o deploy automático de todas as branches, o valor de `deploymentEnabled` teria que ser `false` em vez de um objeto por branch.
+
+### Deploy manual com a Vercel CLI
+
+A Vercel CLI está instalada como dependência de desenvolvimento. Execute os comandos abaixo na raiz do projeto:
+
+```bash
+# Autentica o terminal na conta da Vercel.
+yarn vercel login
+
+# Vincula a pasta local a um projeto existente ou cria a associação inicial.
+yarn vercel link
+
+# Baixa configurações e variáveis do ambiente Preview para o cache local.
+yarn vercel pull --environment=preview
+
+# Cria um Preview Deployment e retorna sua URL temporária.
+yarn vercel deploy
+
+# Cria um Production Deployment e associa o domínio de produção.
+yarn vercel deploy --prod
+```
+
+O comando `pull` só é necessário para reproduzir localmente as configurações da Vercel com comandos como `vercel build` ou `vercel dev`. Sempre execute primeiro um Preview Deployment, valide a URL gerada e use `--prod` somente quando a versão estiver aprovada.
+
+Consulte também a documentação oficial de [configuração Git](https://vercel.com/docs/project-configuration/git-configuration) e de [deploy pela CLI](https://vercel.com/docs/cli/deploy).
+
+Ao executar `vercel link` ou `vercel pull`, a CLI cria a pasta `.vercel/`, que contém a associação do projeto e cópias locais de configurações e variáveis. As entradas `.vercel` e `.env*` no `.gitignore` impedem o versionamento desses dados locais e de possíveis credenciais.
 
 Antes de publicar, valide o build localmente:
 
@@ -175,7 +213,18 @@ yarn build
 yarn preview
 ```
 
-Após salvar as configurações no Vercel, execute um novo deploy. A variável `BASE_URL` é usada pelo Playwright e não é necessária para o build do frontend; configure-a no ambiente de testes com a URL publicada caso a suíte E2E deva validar a produção.
+Após criar o Preview Deployment, configure `BASE_URL` com a URL retornada para executar o Playwright contra essa versão. A variável é usada somente pelos testes e não é necessária para o build do frontend:
+
+```bash
+# PowerShell
+$env:BASE_URL="https://url-do-preview.vercel.app"
+npx playwright test --project=chromium
+
+# Bash
+BASE_URL="https://url-do-preview.vercel.app" npx playwright test --project=chromium
+```
+
+O endereço padrão presente em `playwright.config.ts` também aponta para um Preview Deployment, mas pode expirar ou ser substituído. Prefira informar `BASE_URL` para escolher explicitamente o ambiente testado.
 
 ---
 

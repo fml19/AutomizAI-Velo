@@ -40,3 +40,6 @@ dist-ssr
 docs/
 .docs.local
 .docs.*.backup
+
+.vercel
+.env*

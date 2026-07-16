@@ -36,7 +36,10 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
     // baseURL: process.env.BASE_URL || 'http://localhost:5173/',
-    baseURL: process.env.BASE_URL || 'https://velo-fml19.vercel.app',
+    // baseURL: process.env.BASE_URL || 'https://velo-fml19.vercel.app',
+
+    //Previll
+    baseURL: process.env.BASE_URL || 'https://automiz-ai-velo-j6mpkxtgc-fernando-ml.vercel.app/',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
