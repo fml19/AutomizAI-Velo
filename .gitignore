@@ -32,10 +32,10 @@ dist-ssr
 /playwright/.cache/
 /playwright/.auth/
 
-#arquivo de acesso
+# Arquivos de ambiente e credenciais
 .env
-.env.local
-.env.*.backup
+.env.*
+!.env.example
 .docs
 docs/
 .docs.local

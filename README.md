@@ -224,6 +224,9 @@ npx playwright test --project=chromium
 # Executar via terminal
 yarn playwright test
 
+# Reproduzir localmente a regressão usada no CI
+yarn playwright test --workers=1 --retries=2 --reporter=line,html
+
 # Executar um arquivo específico
 npx playwright test playwright/e2e/checkout.spec.ts --project=chromium
 
@@ -243,3 +246,27 @@ npx tsc -p tsconfig.playwright.json --noEmit
 Os cenários que criam pedidos reais precisam de acesso ao Supabase e de uma `DATABASE_URL` válida. Para reduzir concorrência sobre o banco durante a execução local desses cenários, use `--workers=1` quando necessário.
 
 A opção `--shard=1/2` divide a suíte em duas partes e executa somente o primeiro shard. Ela é útil para distribuir os testes entre dois processos ou jobs de CI e reduzir o tempo total da execução. Para executar a outra parte da suíte, utilize `yarn playwright test --shard=2/2`; os dois comandos são necessários para cobrir todos os testes.
+
+### Integração contínua com GitHub Actions
+
+O workflow `.github/workflows/playwright.yml` executa a suíte completa em pushes e pull requests direcionados às branches `main` e `master`. A execução utiliza Ubuntu, Node.js LTS, Chromium, um worker e até duas novas tentativas para testes que falharem no CI.
+
+O repositório precisa ter os seguintes **Repository secrets** configurados em **Settings → Secrets and variables → Actions**:
+
+| Secret | Finalidade |
+|--------|------------|
+| `DATABASE_URL` | Conexão PostgreSQL usada pela preparação e limpeza dos dados de teste |
+| `VITE_SUPABASE_URL` | URL do projeto Supabase utilizada pela aplicação Vite |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública utilizada pelo cliente Supabase no navegador |
+
+Os valores devem corresponder ao `.env` local, mas o arquivo e as credenciais nunca devem ser adicionados ao Git.
+
+O workflow utiliza as versões atuais das Actions baseadas em Node.js 24:
+
+- `actions/checkout@v7`
+- `actions/setup-node@v7`
+- `actions/upload-artifact@v7`
+
+Durante a execução, os reporters `line` e `html` são habilitados. O primeiro exibe o andamento no log do job e o segundo gera `playwright-report/index.html`. Ao final, a pasta `playwright-report/` é publicada como artifact por 30 dias. A variável `PLAYWRIGHT_HTML_OPEN=never` impede que o relatório tente abrir um servidor interativo no runner.
+
+Se o relatório não for gerado, o passo de upload falhará por causa de `if-no-files-found: error`, evitando que a ausência do artifact passe apenas como warning.
