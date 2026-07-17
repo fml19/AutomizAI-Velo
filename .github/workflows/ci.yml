@@ -17,7 +17,7 @@ env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
   VERCEL_ORGID: ${{ secrets.VERCEL_ORGID }}
-  VERCEL_SCOPE: ${{ secrets. VERCEL_SCOPE }}-ml
+  VERCEL_SCOPE: ${{ secrets. VERCEL_SCOPE }}
 
 jobs:
   # Executa os testes unitários da aplicação com Vitest.
