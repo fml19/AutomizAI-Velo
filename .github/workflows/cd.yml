@@ -2,7 +2,7 @@
 # Objetivo: executar os testes unitários e E2E a cada push ou pull request.
 # Os jobs são independentes para facilitar a manutenção e a expansão futura.
 
-name: Continuous Integration
+name: Continuous Deployment
 
 # Executa o workflow em pushes e pull requests nas branches principais.
 on:
@@ -49,7 +49,7 @@ jobs:
         run: yarn test
 
   # Executa os testes de ponta a ponta da aplicação com Playwright. >LOCALHOST<
-  test:
+  testLOCALHOST:
     # Limita a duração máxima do job para evitar execuções presas.
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -179,3 +179,16 @@ jobs:
         with:
           name: playwright-report-preview
           path: playwright-report
+
+  promote:
+    name: Promote to Production
+    needs: [build-and-deploy, e2e-tests]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Vercel promote
+        run: |
+          npx vercel@latest promote ${{ needs.build-and-deploy.outputs.deploument-url }} \
+          --token=$VERCEL_TOKEN \
+          --scope=$VERCEL_SCOPE \
+          --yes
