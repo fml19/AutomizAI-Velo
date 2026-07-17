@@ -87,7 +87,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report-local
           path: playwright-report/
           if-no-files-found: error
           retention-days: 30
@@ -176,5 +176,5 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: playwright-report
+          name: playwright-report-preview
           path: playwright-report
