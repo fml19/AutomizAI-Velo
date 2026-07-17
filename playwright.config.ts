@@ -38,11 +38,11 @@ export default defineConfig({
     // baseURL: process.env.BASE_URL || 'http://localhost:5173/',
     // baseURL: process.env.BASE_URL || 'https://velo-fml19.vercel.app',
 
-    //Previll
-    baseURL: process.env.BASE_URL || 'https://automiz-ai-velo-j6mpkxtgc-fernando-ml.vercel.app/',
+    //Previll URL Dinamica
+    baseURL: process.env.BASE_URL || 'http://localhost:5173/',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Collect a trace for every test run. See https://playwright.dev/docs/trace-viewer */
+    trace: 'on',
 
     // Tempo máximo para ações interativas como click, fill ()
     // Quando o valor é 0, herda o limie do timout geral teste

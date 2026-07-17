@@ -213,16 +213,26 @@ yarn build
 yarn preview
 ```
 
-Após criar o Preview Deployment, configure `BASE_URL` com a URL retornada para executar o Playwright contra essa versão. A variável é usada somente pelos testes e não é necessária para o build do frontend:
+### Validar o Preview Deployment com Playwright
+
+Antes de promover uma versão para produção, execute os testes E2E contra a URL do Preview Deployment. A variável de ambiente `BASE_URL`, definida em tempo de execução, substitui a URL padrão de `playwright.config.ts` e faz o Playwright navegar pela aplicação publicada no Preview.
+
+Por exemplo, para validar o Preview `https://automiz-ai-velo-vetfml-4275-fernando-ml.vercel.app`:
 
 ```bash
-# PowerShell
-$env:BASE_URL="https://url-do-preview.vercel.app"
-npx playwright test --project=chromium
+# PowerShell — executa todos os testes E2E no Chromium contra o Preview
+$env:BASE_URL="https://automiz-ai-velo-vetfml-4275-fernando-ml.vercel.app"
+yarn playwright test --project=chromium
 
-# Bash
-BASE_URL="https://url-do-preview.vercel.app" npx playwright test --project=chromium
+# Bash, Linux ou macOS — executa todos os testes E2E no Chromium contra o Preview
+BASE_URL="https://automiz-ai-velo-vetfml-4275-fernando-ml.vercel.app" yarn playwright test --project=chromium
 ```
+
+> **Observação:** no PowerShell, use obrigatoriamente `$env:BASE_URL="..."`. A forma `BASE_URL="..." yarn playwright test` funciona somente em Bash. Como nenhum arquivo de teste específico é informado, o comando executa toda a suíte E2E configurada para o projeto Chromium.
+
+> **Voltar a testar localmente:** depois de executar os testes contra o Preview, abra um novo terminal, diferente daquele em que `BASE_URL` foi definida, e execute `yarn playwright test --project=chromium`. O novo terminal usará o endereço local padrão `http://localhost:5173/`. Para reutilizar o mesmo terminal, execute antes `Remove-Item Env:BASE_URL` no PowerShell.
+
+Substitua a URL do exemplo pela URL retornada em cada novo Preview Deployment. Essa execução permite validar os fluxos reais da versão hospedada antes de usar `yarn vercel deploy --prod`, reduzindo o risco de publicar uma regressão em produção. A variável é usada somente durante os testes e não altera o build nem a configuração permanente da aplicação.
 
 O endereço padrão presente em `playwright.config.ts` também aponta para um Preview Deployment, mas pode expirar ou ser substituído. Prefira informar `BASE_URL` para escolher explicitamente o ambiente testado.
 
