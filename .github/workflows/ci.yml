@@ -170,6 +170,7 @@ jobs:
         run: yarn playwright test
         env:
           BASE_URL: ${{ needs.build-and-deploy.outputs.deploument-url }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       # 7. Relatório de Teste Automatizados
       - name: Upload Playwright report
