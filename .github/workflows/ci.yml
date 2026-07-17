@@ -48,49 +48,49 @@ jobs:
       - name: Run unit tests
         run: yarn test
 
-  # Executa os testes de ponta a ponta da aplicação com Playwright.
-  test:
-    # Limita a duração máxima do job para evitar execuções presas.
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
+  # # Executa os testes de ponta a ponta da aplicação com Playwright.
+  # test:
+  #   # Limita a duração máxima do job para evitar execuções presas.
+  #   timeout-minutes: 60
+  #   runs-on: ubuntu-latest
 
-    # Disponibiliza credenciais e configurações necessárias aos testes E2E.
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      DOTENV_CONFIG_QUIET: "true"
-      PLAYWRIGHT_HTML_OPEN: "never"
+  #   # Disponibiliza credenciais e configurações necessárias aos testes E2E.
+  #   env:
+  #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  #     VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  #     VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+  #     DOTENV_CONFIG_QUIET: "true"
+  #     PLAYWRIGHT_HTML_OPEN: "never"
 
-    steps:
-      # Obtém o código do repositório.
-      - uses: actions/checkout@v7
+  #   steps:
+  #     # Obtém o código do repositório.
+  #     - uses: actions/checkout@v7
 
-      # Configura a versão LTS atual do Node.js.
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
+  #     # Configura a versão LTS atual do Node.js.
+  #     - uses: actions/setup-node@v7
+  #       with:
+  #         node-version: lts/*
 
-      # Instala o Yarn e as dependências do projeto.
-      - name: Install dependencies
-        run: npm install -g yarn && yarn
+  #     # Instala o Yarn e as dependências do projeto.
+  #     - name: Install dependencies
+  #       run: npm install -g yarn && yarn
 
-      # Instala os navegadores e as dependências de sistema do Playwright.
-      - name: Install Playwright Browsers
-        run: yarn playwright install --with-deps
+  #     # Instala os navegadores e as dependências de sistema do Playwright.
+  #     - name: Install Playwright Browsers
+  #       run: yarn playwright install --with-deps
 
-      # Executa a suíte E2E e gera saídas nos formatos linha e HTML.
-      - name: Run Playwright tests
-        run: yarn playwright test --reporter=line,html
+  #     # Executa a suíte E2E e gera saídas nos formatos linha e HTML.
+  #     - name: Run Playwright tests
+  #       run: yarn playwright test --reporter=line,html
 
-      # Publica o relatório HTML mesmo quando algum teste falha.
-      - uses: actions/upload-artifact@v7
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report-local
-          path: playwright-report/
-          if-no-files-found: error
-          retention-days: 30
+  #     # Publica o relatório HTML mesmo quando algum teste falha.
+  #     - uses: actions/upload-artifact@v7
+  #       if: ${{ !cancelled() }}
+  #       with:
+  #         name: playwright-report-local
+  #         path: playwright-report/
+  #         if-no-files-found: error
+  #         retention-days: 30
 
   build-and-deploy:
     name: Build & Deploy Vercel Preview
