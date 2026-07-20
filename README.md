@@ -15,6 +15,31 @@ Uma SPA (Single Page Application) que permite:
 
 ---
 
+## Atualizações de 20/07/2026
+
+- Separação completa entre os ambientes **Preview** e **Production**, cada um com seu próprio projeto Supabase.
+- Pipeline de entrega contínua reorganizado para executar testes unitários, publicar o Preview, rodar a regressão E2E no Preview e somente então publicar em Production.
+- Builds do Vercel executados remotamente, consumindo as variáveis `Sensitive` configuradas diretamente em cada ambiente.
+- Integração do Playwright com o TestDino pelo endpoint `https://reporter.testdino.com`.
+- Relatórios HTML e JSON gerados dentro de `playwright-report/` e publicados como artifact do GitHub Actions.
+- Arquivos temporários da Supabase CLI removidos do versionamento e mantidos apenas no ambiente local.
+- Evidências e decisões da implementação registradas em [`docs/desafio-final.md`](docs/desafio-final.md).
+
+### Isolamento dos dados
+
+| Ambiente | Frontend | Banco | Uso |
+| -------- | -------- | ----- | --- |
+| **Preview** | Vercel Preview Deployment | Supabase Preview | Validação e testes E2E |
+| **Production** | Vercel Production Deployment | Supabase Production | Aplicação publicada e dados reais |
+
+Os testes E2E usam exclusivamente o banco Preview. Os pedidos sintéticos são criados e removidos somente nesse ambiente; a publicação do frontend em Production não cria nem apaga registros do banco de produção.
+
+Na regressão final, Production permaneceu com os mesmos 18 pedidos e com hash idêntico antes e depois da execução. No Preview, os 17 pedidos sintéticos criados pela suíte foram removidos ao final.
+
+> **Atenção — material de estudo:** as políticas RLS atuais permitem `SELECT` e `INSERT` para o papel `anon` intencionalmente, para viabilizar o exercício. Essa configuração não deve ser usada em um sistema real ou com dados reais. Em um projeto de produção, o acesso deve exigir autenticação e políticas de autorização adequadas.
+
+---
+
 ## Stack Tecnológica
 
 | Categoria         | Tecnologias                                                                 |
@@ -24,7 +49,8 @@ Uma SPA (Single Page Application) que permite:
 | **Validação**     | Zod                                                                         |
 | **Data Fetching** | TanStack Query                                                              |
 | **Backend**       | Supabase (PostgreSQL + Edge Functions)                                      |
-| **Testes E2E**    | Playwright 1.61.1 + Chromium                                                |
+| **Testes E2E**    | Playwright 1.61.1 + Chromium + TestDino                                     |
+| **Entrega**       | GitHub Actions + Vercel                                                     |
 
 ---
 
@@ -107,6 +133,9 @@ DATABASE_URL="postgresql://usuario:senha@host:porta/banco"
 
 # Opcional; o padrão é http://localhost:5173/
 BASE_URL="http://localhost:5173/"
+
+# Necessária para publicar os resultados no TestDino
+TESTDINO_TOKEN="seu_token_testdino"
 ```
 
 > Encontre essas informações em: **Project Settings → API**
@@ -119,19 +148,23 @@ BASE_URL="http://localhost:5173/"
 # Instalar CLI
 yarn add supabase -D
 
-# Login e vincular projeto
+# Login e conferência dos projetos disponíveis
 yarn supabase login
-yarn supabase link --project-ref zfxbozdbybolusncsewp
+yarn supabase projects list
 
+# Vincular somente o projeto Preview durante o desenvolvimento e os testes
+yarn supabase link --project-ref <preview-project-ref>
 
-# Aplicar migrações (cria tabelas e RLS)
-yarn supabase db push
+# Conferir o vínculo e simular as migrações antes de aplicá-las
+yarn supabase migration list --linked
+yarn supabase db push --linked --dry-run
 
-# Deploy das Edge Functions
-yarn supabase functions deploy
+# Aplicar as migrações e publicar a função somente no Preview
+yarn supabase db push --linked
+yarn supabase functions deploy credit-analysis --project-ref <preview-project-ref>
 ```
 
-Pronto! O banco e as functions estarão configurados.
+Substitua `<preview-project-ref>` pelo ID do projeto Supabase reservado ao Preview. Antes de qualquer `link`, `db push` ou `functions deploy`, confirme o project ref exibido pela CLI. Não execute esses comandos contra Production sem uma decisão explícita e uma janela de mudança apropriada.
 
 ### 4. Deploy do frontend no Vercel (Vite)
 
@@ -147,11 +180,14 @@ O frontend pode ser publicado no Vercel diretamente a partir deste repositório.
 Cadastre no projeto do Vercel, em **Settings → Environment Variables**, as variáveis usadas no build:
 
 ```env
+VITE_SUPABASE_PROJECT_ID="seu_project_id"
 VITE_SUPABASE_URL="https://seu_project_id.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="sua_chave_anon_publica"
 ```
 
-Configure essas variáveis pelo menos para o ambiente **Production**. Se os Preview Deployments também precisarem acessar o Supabase, habilite-as para **Preview**. O `vite.config.ts` interrompe o build caso alguma variável obrigatória esteja ausente ou a URL do Supabase seja inválida.
+Cadastre as três variáveis separadamente para **Preview** e **Production**. Os valores de Preview devem apontar apenas para o Supabase Preview, enquanto os valores de Production devem apontar apenas para o Supabase Production. O `vite.config.ts` interrompe o build caso uma variável obrigatória esteja ausente ou a URL do Supabase seja inválida.
+
+Como as variáveis estão marcadas como `Sensitive` no Vercel, o pipeline utiliza builds remotos. Não reutilize um bundle gerado para Preview em Production e não use `vercel build --prebuilt` nesse fluxo.
 
 Como a aplicação usa `BrowserRouter`, o arquivo `vercel.json` na raiz redireciona as rotas da SPA para o `index.html` e controla o deploy automático integrado ao Git:
 
@@ -193,10 +229,10 @@ yarn vercel link
 # Baixa configurações e variáveis do ambiente Preview para o cache local.
 yarn vercel pull --environment=preview
 
-# Cria um Preview Deployment e retorna sua URL temporária.
-yarn vercel deploy
+# Cria remotamente um Preview Deployment com as variáveis de Preview.
+yarn vercel deploy --target=preview
 
-# Cria um Production Deployment e associa o domínio de produção.
+# Cria remotamente um novo bundle com as variáveis de Production.
 yarn vercel deploy --prod
 ```
 
@@ -217,15 +253,15 @@ yarn preview
 
 Antes de promover uma versão para produção, execute os testes E2E contra a URL do Preview Deployment. A variável de ambiente `BASE_URL`, definida em tempo de execução, substitui a URL padrão de `playwright.config.ts` e faz o Playwright navegar pela aplicação publicada no Preview.
 
-Por exemplo, para validar o Preview `https://automiz-ai-velo-vetfml-4275-fernando-ml.vercel.app`:
+Substitua `<preview-deployment-url>` pela URL retornada no deploy:
 
 ```bash
 # PowerShell — executa todos os testes E2E no Chromium contra o Preview
-$env:BASE_URL="https://automiz-ai-velo-vetfml-4275-fernando-ml.vercel.app"
+$env:BASE_URL="<preview-deployment-url>"
 yarn playwright test --project=chromium
 
 # Bash, Linux ou macOS — executa todos os testes E2E no Chromium contra o Preview
-BASE_URL="https://automiz-ai-velo-vetfml-4275-fernando-ml.vercel.app" yarn playwright test --project=chromium
+BASE_URL="<preview-deployment-url>" yarn playwright test --project=chromium
 ```
 
 > **Observação:** no PowerShell, use obrigatoriamente `$env:BASE_URL="..."`. A forma `BASE_URL="..." yarn playwright test` funciona somente em Bash. Como nenhum arquivo de teste específico é informado, o comando executa toda a suíte E2E configurada para o projeto Chromium.
@@ -234,7 +270,7 @@ BASE_URL="https://automiz-ai-velo-vetfml-4275-fernando-ml.vercel.app" yarn playw
 
 Substitua a URL do exemplo pela URL retornada em cada novo Preview Deployment. Essa execução permite validar os fluxos reais da versão hospedada antes de usar `yarn vercel deploy --prod`, reduzindo o risco de publicar uma regressão em produção. A variável é usada somente durante os testes e não altera o build nem a configuração permanente da aplicação.
 
-O endereço padrão presente em `playwright.config.ts` também aponta para um Preview Deployment, mas pode expirar ou ser substituído. Prefira informar `BASE_URL` para escolher explicitamente o ambiente testado.
+Sem `BASE_URL`, o `playwright.config.ts` inicia o Vite e usa `http://localhost:5173/`. Para testar um deployment, informe sempre a URL explicitamente.
 
 ---
 
@@ -329,8 +365,8 @@ npx playwright test --project=chromium
 # Executar via terminal
 yarn playwright test
 
-# Reproduzir localmente a regressão usada no CI
-yarn playwright test --workers=1 --retries=2 --reporter=line,html
+# Executar a regressão com um worker, preservando os reporters configurados
+yarn playwright test --workers=1
 
 # Executar um arquivo específico
 npx playwright test playwright/e2e/checkout.spec.ts --project=chromium
@@ -342,7 +378,7 @@ npx playwright test --project=chromium --headed
 yarn playwright test --shard=1/2
 
 # Abrir o último relatório HTML
-npx playwright show-report
+npx playwright show-report playwright-report
 
 # Validar a tipagem dos testes
 npx tsc -p tsconfig.playwright.json --noEmit
@@ -354,17 +390,26 @@ A opção `--shard=1/2` divide a suíte em duas partes e executa somente o prime
 
 ### Integração contínua com GitHub Actions
 
-O workflow `.github/workflows/playwright.yml` executa a suíte completa em pushes e pull requests direcionados às branches `main` e `master`. A execução utiliza Ubuntu, Node.js LTS, Chromium, um worker e até duas novas tentativas para testes que falharem no CI.
+O workflow `.github/workflows/cd.yml` é executado em pushes e pull requests direcionados às branches `main` e `master`. O fluxo atual contém quatro etapas encadeadas:
+
+1. **Unit Tests:** executa os testes unitários com Vitest.
+2. **Build & Deploy Vercel Preview:** cria remotamente um Preview Deployment com as variáveis de Preview configuradas no Vercel.
+3. **Run E2E Tests:** executa a regressão Playwright contra a URL gerada, usando exclusivamente o banco Supabase Preview, e envia os resultados ao TestDino.
+4. **Build & Deploy Production:** em eventos de `push`, publica exatamente o commit aprovado pelos E2E, usando um novo build remoto com as variáveis de Production.
+
+Se qualquer etapa obrigatória falhar, as etapas dependentes não são executadas. Pull requests validam até os E2E, mas não promovem para Production.
 
 O repositório precisa ter os seguintes **Repository secrets** configurados em **Settings → Secrets and variables → Actions**:
 
-| Secret                          | Finalidade                                                            |
-| ------------------------------- | --------------------------------------------------------------------- |
-| `DATABASE_URL`                  | Conexão PostgreSQL usada pela preparação e limpeza dos dados de teste |
-| `VITE_SUPABASE_URL`             | URL do projeto Supabase utilizada pela aplicação Vite                 |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública utilizada pelo cliente Supabase no navegador            |
+| Secret                          | Finalidade                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `SUPABASE_PREVIEW_DATABASE_URL` | Conexão PostgreSQL usada para preparar e limpar os dados de teste no Preview   |
+| `TD_TOKEN`                      | Token usado pelo reporter Playwright para publicar os resultados no TestDino  |
+| `VERCEL_TOKEN`                  | Autenticação da Vercel CLI no pipeline                                         |
+| `VERCEL_PROJECT_ID`             | Identificação do projeto Vercel                                                |
+| `VERCEL_ORGID`                  | Identificação da conta ou organização Vercel                                   |
 
-Os valores devem corresponder ao `.env` local, mas o arquivo e as credenciais nunca devem ser adicionados ao Git.
+As variáveis `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` são obtidas pelo build remoto diretamente dos ambientes Preview e Production do Vercel. Elas não precisam ser copiadas para o workflow. Arquivos `.env`, URLs de banco e tokens nunca devem ser adicionados ao Git.
 
 O workflow utiliza as versões atuais das Actions baseadas em Node.js 24:
 
@@ -372,6 +417,10 @@ O workflow utiliza as versões atuais das Actions baseadas em Node.js 24:
 - `actions/setup-node@v7`
 - `actions/upload-artifact@v7`
 
-Durante a execução, os reporters `line` e `html` são habilitados. O primeiro exibe o andamento no log do job e o segundo gera `playwright-report/index.html`. Ao final, a pasta `playwright-report/` é publicada como artifact por 30 dias. A variável `PLAYWRIGHT_HTML_OPEN=never` impede que o relatório tente abrir um servidor interativo no runner.
+O `playwright.config.ts` mantém três reporters ativos:
 
-Se o relatório não for gerado, o passo de upload falhará por causa de `if-no-files-found: error`, evitando que a ausência do artifact passe apenas como warning.
+- TestDino, usando `TESTDINO_TOKEN` e `https://reporter.testdino.com`.
+- HTML, salvo em `playwright-report/index.html`.
+- JSON, salvo em `playwright-report/report.json`.
+
+Ao final do job E2E, toda a pasta `playwright-report/` é publicada no artifact `playwright-report-preview`, inclusive quando houver falha nos testes, desde que o job não tenha sido cancelado.

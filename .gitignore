@@ -37,9 +37,13 @@ dist-ssr
 .env.*
 !.env.example
 .docs
-docs/
+docs/*
+!docs/desafio-final.md
 .docs.local
 .docs.*.backup
 
 .vercel
 .env*
+
+# Estado local gerado pela Supabase CLI
+/supabase/.temp/
