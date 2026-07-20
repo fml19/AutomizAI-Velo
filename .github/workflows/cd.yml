@@ -48,51 +48,6 @@ jobs:
       - name: Run unit tests
         run: yarn test
 
-  # Executa os testes de ponta a ponta da aplicação com Playwright. >LOCALHOST<
-  testLOCALHOST:
-    # Limita a duração máxima do job para evitar execuções presas.
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-
-    # Disponibiliza credenciais e configurações necessárias aos testes E2E.
-    env:
-      DATABASE_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_URL }}
-      VITE_SUPABASE_URL: ${{ secrets.SUPABASE_PREVIEW_URL }}
-      VITE_SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PREVIEW_PROJECT_ID }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PREVIEW_PUBLISHABLE_KEY }}
-      DOTENV_CONFIG_QUIET: "true"
-      PLAYWRIGHT_HTML_OPEN: "never"
-
-    steps:
-      # Obtém o código do repositório.
-      - uses: actions/checkout@v7
-
-      # Configura a versão LTS atual do Node.js.
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
-
-      # Instala o Yarn e as dependências do projeto.
-      - name: Install dependencies
-        run: npm install -g yarn && yarn
-
-      # Instala os navegadores e as dependências de sistema do Playwright.
-      - name: Install Playwright Browsers
-        run: yarn playwright install --with-deps
-
-      # Executa a suíte E2E e gera saídas nos formatos linha e HTML.
-      - name: Run Playwright tests
-        run: yarn playwright test --reporter=line,html
-
-      # Publica o relatório HTML mesmo quando algum teste falha.
-      - uses: actions/upload-artifact@v7
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report-local
-          path: playwright-report/
-          if-no-files-found: error
-          retention-days: 30
-
   build-and-deploy:
     name: Build & Deploy Vercel Preview
     needs: [unit-tests]
@@ -123,15 +78,11 @@ jobs:
       - name: Pull Vercel Config
         run: yarn vercel pull --yes --environment=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
 
-      # 6. Build para o Vercel
-      - name: Build Vercel
-        run: yarn vercel build --target=preview --token=$VERCEL_TOKEN
-
-      # 7. Deploy preview no Vercel
+      # 6. Build e deploy remotos com as variáveis Sensitive de Preview.
       - name: Deploy preview
         id: deploy
         run: |
-          URL=$(yarn --silent vercel deploy --prebuilt --target=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
+          URL=$(yarn --silent vercel deploy --yes --target=preview --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
   e2e-tests:
@@ -208,12 +159,9 @@ jobs:
       - name: Pull Vercel Production Config
         run: yarn vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
 
-      # Gera um novo bundle com as variáveis VITE_* de Production.
-      - name: Build Vercel Production
-        run: yarn vercel build --prod --token=$VERCEL_TOKEN
-
+      # Gera e publica remotamente um bundle novo com as variáveis Sensitive de Production.
       - name: Deploy Production
         id: deploy
         run: |
-          URL=$(yarn --silent vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
+          URL=$(yarn --silent vercel deploy --yes --prod --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
