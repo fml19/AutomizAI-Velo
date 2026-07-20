@@ -56,9 +56,10 @@ jobs:
 
     # Disponibiliza credenciais e configurações necessárias aos testes E2E.
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      DATABASE_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_URL }}
+      VITE_SUPABASE_URL: ${{ secrets.SUPABASE_PREVIEW_URL }}
+      VITE_SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PREVIEW_PROJECT_ID }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PREVIEW_PUBLISHABLE_KEY }}
       DOTENV_CONFIG_QUIET: "true"
       PLAYWRIGHT_HTML_OPEN: "never"
 
@@ -99,10 +100,6 @@ jobs:
     outputs:
       deploument-url: ${{ steps.deploy.outputs.deployment-url }}
 
-    env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-
     steps:
       # 1. Faz checkout do código do repositório
       - name: Checkout repository
@@ -128,7 +125,7 @@ jobs:
 
       # 6. Build para o Vercel
       - name: Build Vercel
-        run: yarn vercel build --token=$VERCEL_TOKEN
+        run: yarn vercel build --target=preview --token=$VERCEL_TOKEN
 
       # 7. Deploy preview no Vercel
       - name: Deploy preview
@@ -165,12 +162,13 @@ jobs:
       - name: Install Playwright Browser
         run: yarn playwright install --with-deps chromium
 
-      # 6. Execução dos teste de Regressão
-      - name: Run Regression tests
+      # 6. Executa a regressão contra o Preview e publica o resultado no TestDino
+      - name: Run Regression tests and publish TestDino report
         run: yarn playwright test
         env:
           BASE_URL: ${{ needs.build-and-deploy.outputs.deploument-url }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_URL }}
+          TESTDINO_TOKEN: ${{ secrets.TD_TOKEN }}
 
       # 7. Relatório de Teste Automatizados
       - name: Upload Playwright report
@@ -180,24 +178,42 @@ jobs:
           name: playwright-report-preview
           path: playwright-report
 
-      # 8. Publica report JSON do TestDINO
-      - name: Publish TestDino Report
-        if: ${{ !cancelled() }}
-        run: yarn playwright test
-        env:
-          BASE_URL: ${{ needs.build-and-deploy.outputs.deploument-url }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          TESTDINO_TOKEN: ${{ secrets.TD_TOKEN }}
-
   promote:
-    name: Promote to Production
+    name: Build & Deploy Production
     needs: [build-and-deploy, e2e-tests]
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.deployment-url }}
 
     steps:
-      - name: Vercel promote
+      # Usa exatamente o commit que passou pelos testes E2E.
+      - name: Checkout tested commit
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # Baixa exclusivamente as configurações do ambiente Production.
+      - name: Pull Vercel Production Config
+        run: yarn vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE
+
+      # Gera um novo bundle com as variáveis VITE_* de Production.
+      - name: Build Vercel Production
+        run: yarn vercel build --prod --token=$VERCEL_TOKEN
+
+      - name: Deploy Production
+        id: deploy
         run: |
-          npx vercel@latest promote ${{ needs.build-and-deploy.outputs.deploument-url }} \
-          --token=$VERCEL_TOKEN \
-          --scope=$VERCEL_SCOPE \
-          --yes
+          URL=$(yarn --silent vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --scope=$VERCEL_SCOPE)
+          echo "deployment-url=$URL" >> $GITHUB_OUTPUT
