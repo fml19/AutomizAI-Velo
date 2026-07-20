@@ -184,6 +184,10 @@ jobs:
       - name: Publish TestDino Report
         if: ${{ !cancelled() }}
         run: yarn playwright test
+        env:
+          BASE_URL: ${{ needs.build-and-deploy.outputs.deploument-url }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TESTDINO_TOKEN: ${{ secrets.TD_TOKEN }}
 
   promote:
     name: Promote to Production
