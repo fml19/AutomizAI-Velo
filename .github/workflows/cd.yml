@@ -180,6 +180,11 @@ jobs:
           name: playwright-report-preview
           path: playwright-report
 
+      # 8. Publica report JSON do TestDINO
+      - name: Publish TestDino Report
+        if: ${{ !cancelled() }}
+        run: yarn playwright test
+
   promote:
     name: Promote to Production
     needs: [build-and-deploy, e2e-tests]
